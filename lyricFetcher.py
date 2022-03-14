@@ -4,16 +4,18 @@ from bs4 import BeautifulSoup, element
 import os
 import sys
 
-song = sys.argv[1]
-artist = sys.argv[2]
+artist = sys.argv[1]
+song = sys.argv[2]
 
-# song = "sober-up"
 # artist = "ajr"
+# song = "weak"
 
 song_hyphen = song.replace(" ","-")
 artist_hyphen = artist.replace(" ","-")
 
-link = f"https://www.genius.com/{artist_hyphen}-{song_hyphen}-lyrics"
+song_info = f"{artist_hyphen}-{song_hyphen}"
+
+link = f"https://www.genius.com/{song_info}-lyrics"
 
 lyrics_array = []
 lyrics_string = ""
@@ -46,7 +48,7 @@ for lyric in lyrics:
             linebreak_split = linebreak_split.split(">")
             for item in linebreak_split:
                 item2 = item.split("<")[0]
-                if item2 not in {"]", "["}:
+                if item2 not in {"[", "]", ""}:
                     # print(item)
                     lyrics_array.append(item2)
                 if item.endswith("<br/") and lyrics_array[-1] != "\n":
@@ -54,7 +56,15 @@ for lyric in lyrics:
         else:
             if type(linebreak) == element.Tag:
                 # print(linebreak.text)
-                lyrics_array[-1] = lyrics_array[-1] + linebreak.text + "{"
+                linebreak_split = linebreak_string.split(">")
+                for item in linebreak_split:
+                    item2 = item.split("<")[0]
+                    if item2 not in {"[", "]", ""}:
+                        # print(item)
+                        lyrics_array.append(item2)
+                    if item.endswith("<br/") and lyrics_array[-1] != "\n":
+                        lyrics_array.append("\n")
+                # lyrics_array[-1] = lyrics_array[-1] + linebreak.text + "{"
                 continue
             else:
                 lyrics_array.append(linebreak)
@@ -66,12 +76,12 @@ for item in lyrics_iter:
         continue
     else:
         if item[-1] == "(":
-            item = item + next(lyrics_iter) + next(lyrics_iter)
+            item = item + next(lyrics_iter, "") + next(lyrics_iter, "")
         if item[0] == "[":
             item = "\n" + item
         if item[-1] == "{":
             item = item[:-1]
-            test = next(lyrics_iter)
+            test = next(lyrics_iter, "")
             item += test
 
     # item = item + "\n"
@@ -79,7 +89,7 @@ for item in lyrics_iter:
 
 print(lyrics_string)
 
-filename = f".\{song_hyphen}-{artist_hyphen}.txt"
+filename = f".\{song_info}.txt"
 
 os.makedirs(os.path.dirname(filename), exist_ok=True)
 
