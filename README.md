@@ -1,2 +1,2 @@
 # lyric-fetcher
- Fetches lyrics for the passed song
+ Displays the lyrics for the current song that is playing. Currently in alpha.
