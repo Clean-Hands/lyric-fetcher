@@ -1,11 +1,27 @@
-from fileinput import filename
+import subprocess
 from time import sleep
 import requests
 from bs4 import BeautifulSoup, element
 import os
 from os.path import exists
 import re
+import unicodedata
 import mediaUpdater
+
+# creates a .txt file with the lyrics as the content and the artist and song name as the title
+def make_file(filename, lyrics_string):
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(lyrics_string)
+
+# closes open lyrics and then opens the current lyrics in notepad
+def update_lyric_display(filename):
+    subprocess.call("taskkill /f /im notepad.exe", shell=True)
+    subprocess.Popen(["notepad.exe", filename])
+
+no_media = False
+old_song_info = ""
 
 while True:
 
@@ -14,12 +30,38 @@ while True:
     media_info = mediaUpdater.get_media_info()
 
     if media_info == None:
-        print("No media is playing.")
-        continue
+        if no_media == True:
+            continue
+        else:
+            print("\nNo media is playing.")
+            no_media = True
+            continue
+    else:
+        no_media = False
+    
+    artist = media_info['artist']
+    song = media_info['title']
+
+    # remove features from the title of the song
+    if " (feat." in song:
+        song = song.split(" (feat.", 1)[0]
+    if " (with" in song:
+        song = song.split(" (with", 1)[0]
+
+    # replace ampersands with "and"
+    song = song.replace("&", "and")
 
     # remove all characters that are not whitespace nor letters
-    artist = re.sub(r'[^\w\s]', '', media_info['artist'])
-    song = re.sub(r'[^\w\s]', '', media_info['title'])
+    artist = re.sub(r'[^\w\s]', '', artist)
+    song = re.sub(r'[^\w\s]', '', song)
+
+    # replace all accented characters with their non-accented counterparts
+    artist = unicodedata.normalize('NFD', artist)\
+             .encode('ascii', 'ignore')\
+             .decode("utf-8")
+    song = unicodedata.normalize('NFD', song)\
+             .encode('ascii', 'ignore')\
+             .decode("utf-8")
 
     # make all double/triple/etc. spaces only one space
     artist = re.sub(' +', ' ', artist)
@@ -31,16 +73,23 @@ while True:
 
     song_info = f"{artist_hyphen.lower()}-{song_hyphen.lower()}"
 
-    if exists(f".\lyrics\{song_info}.txt"):
-        print("Lyrics are already downloaded.")
+    filename = f".\lyrics\{song_info}.txt"
+
+    if old_song_info == song_info:
         continue
+    else:
+        old_song_info = song_info
+        if exists(filename):
+            print("\nLyrics are already downloaded.")
+            update_lyric_display(filename)
+            continue
 
     link = f"https://www.genius.com/{song_info}-lyrics"
 
     lyrics_array = []
     lyrics_string = ""
 
-    print("Requesting lyrics...")
+    print("\nRequesting lyrics...")
 
     response = requests.get(link)
 
@@ -48,10 +97,13 @@ while True:
         print("Lyrics were unable to be fetched. It is possible that the song name on Genius" +
             " does not match the media's name, or maybe the current media does not have lyrics on Genius." +
             " A file will still be made to function as a placeholder.")
-        # continue
+        make_file(filename, "Lyrics were unable to be fetched. It is possible that the song name on Genius" +
+            " does not match the media's name, \nor maybe the current media does not have lyrics on Genius." +
+            " A file will still be made to function as a placeholder.")
+        update_lyric_display(filename)
+        continue
     else:
         print("Lyrics successfully fetched.")
-
 
     print("Downloading lyrics...")
 
@@ -124,12 +176,8 @@ while True:
     # print(lyrics_string)
     print("Lyrics downloaded.")
     print("Saving lyrics as a .txt file...")
-
-    filename = f".\lyrics\{song_info}.txt"
-
-    os.makedirs(os.path.dirname(filename), exist_ok=True)
-
-    with open(filename, "w", encoding="utf-8") as f:
-        f.write(lyrics_string)
     
+    make_file(filename, lyrics_string)
     print("Lyrics saved.")
+
+    update_lyric_display(filename)

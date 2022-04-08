@@ -12,7 +12,7 @@ async def get_media_info_helper():
         # song_attr[0] != '_' ignores system attributes
         info_dict = {song_attr: info.__getattribute__(song_attr) for song_attr in dir(info) if song_attr[0] != '_'}
 
-        # converts winrt vector to list
+        # converts winsdk vector to list
         info_dict['genres'] = list(info_dict['genres'])
 
         return info_dict
