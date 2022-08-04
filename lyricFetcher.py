@@ -57,11 +57,11 @@ while True:
 
     # replace all accented characters with their non-accented counterparts
     artist = unicodedata.normalize('NFD', artist)\
-             .encode('ascii', 'ignore')\
-             .decode("utf-8")
+                        .encode('ascii', 'ignore')\
+                        .decode("utf-8")
     song = unicodedata.normalize('NFD', song)\
-             .encode('ascii', 'ignore')\
-             .decode("utf-8")
+                      .encode('ascii', 'ignore')\
+                      .decode("utf-8")
 
     # make all double/triple/etc. spaces only one space
     artist = re.sub(' +', ' ', artist)
@@ -80,7 +80,8 @@ while True:
     else:
         old_song_info = song_info
         if exists(filename):
-            print("\nLyrics are already downloaded.")
+            print(f"\nSONG: {song_info}")
+            print("Lyrics are already downloaded.")
             update_lyric_display(filename)
             continue
 
@@ -89,7 +90,8 @@ while True:
     lyrics_array = []
     lyrics_string = ""
 
-    print("\nRequesting lyrics...")
+    print(f"\nSONG: {song_info}")
+    print("Requesting lyrics...")
 
     response = requests.get(link)
 
@@ -99,7 +101,7 @@ while True:
             " A file will still be made to function as a placeholder.")
         make_file(filename, "Lyrics were unable to be fetched. It is possible that the song name on Genius" +
             " does not match the media's name, \nor maybe the current media does not have lyrics on Genius." +
-            " A file will still be made to function as a placeholder.")
+            " A file has still been made to function as a placeholder.")
         update_lyric_display(filename)
         continue
     else:
@@ -109,40 +111,34 @@ while True:
 
     soup = BeautifulSoup(response.content, "html.parser")
 
-    lyrics = soup.find_all(class_="Lyrics__Container-sc-1ynbvzw-6 jYfhrf")
+    lyrics = soup.find_all(class_="Lyrics__Container-sc-1ynbvzw-6 YYrds")
 
-    for lyric in lyrics:
-        for linebreak in lyric:
-            linebreak_string = str(linebreak)
-            linebreak_first_two = linebreak_string[:2]
-            if linebreak_string[:2] == "<s":
-                continue
-            if linebreak_string[:2] == "<b":
-                if lyrics_array[-1] == "\n":
-                    try:
-                        boolean = lyrics_array[-2] == "\n"
-                    except:
-                        lyrics_array.append("\n")
-                    else:
-                        if boolean:
+    if len(lyrics) == 0:
+        lyrics = soup.find(class_="LyricsPlaceholder__Message-uen8er-3 jlYyFx")
+        lyrics_string = lyrics.string
+
+    else:
+        for lyric in lyrics:
+            for linebreak in lyric:
+                linebreak_string = str(linebreak)
+                linebreak_first_two = linebreak_string[:2]
+                if linebreak_string[:2] == "<s":
+                    continue
+                if linebreak_string[:2] == "<b":
+                    if lyrics_array[-1] == "\n":
+                        try:
+                            boolean = lyrics_array[-2] == "\n"
+                        except:
                             lyrics_array.append("\n")
-                else:
-                    lyrics_array.append("\n")
-
-            elif linebreak_string[:2] == "<a":
-                linebreak_split = str(linebreak.find_all("span"))
-                linebreak_split = linebreak_split.split(">")
-                for item in linebreak_split:
-                    item2 = item.split("<", 1)[0]
-                    if item2 not in {"[", "]", ""}:
-                        # print(item)
-                        lyrics_array.append(item2)
-                    if item.endswith("<br/") and lyrics_array[-1] != "\n":
+                        else:
+                            if boolean:
+                                lyrics_array.append("\n")
+                    else:
                         lyrics_array.append("\n")
-            else:
-                if type(linebreak) == element.Tag:
-                    # print(linebreak.text)
-                    linebreak_split = linebreak_string.split(">")
+
+                elif linebreak_string[:2] == "<a":
+                    linebreak_split = str(linebreak.find_all("span"))
+                    linebreak_split = linebreak_split.split(">")
                     for item in linebreak_split:
                         item2 = item.split("<", 1)[0]
                         if item2 not in {"[", "]", ""}:
@@ -150,28 +146,39 @@ while True:
                             lyrics_array.append(item2)
                         if item.endswith("<br/") and lyrics_array[-1] != "\n":
                             lyrics_array.append("\n")
-                    # lyrics_array[-1] = lyrics_array[-1] + linebreak.text + "{"
-                    continue
                 else:
-                    lyrics_array.append(linebreak)
+                    if type(linebreak) == element.Tag:
+                        # print(linebreak.text)
+                        linebreak_split = linebreak_string.split(">")
+                        for item in linebreak_split:
+                            item2 = item.split("<", 1)[0]
+                            if item2 not in {"[", "]", ""}:
+                                # print(item)
+                                lyrics_array.append(item2)
+                            if item.endswith("<br/") and lyrics_array[-1] != "\n":
+                                lyrics_array.append("\n")
+                        # lyrics_array[-1] = lyrics_array[-1] + linebreak.text + "{"
+                        continue
+                    else:
+                        lyrics_array.append(linebreak)
 
-    lyrics_iter = iter(lyrics_array)
+        lyrics_iter = iter(lyrics_array)
 
-    for item in lyrics_iter:
-        if item == "":
-            continue
-        else:
-            if item[-1] == "(":
-                item = item + next(lyrics_iter, "") + next(lyrics_iter, "")
-            if item[0] == "[":
-                item = "\n" + item
-            if item[-1] == "{":
-                item = item[:-1]
-                test = next(lyrics_iter, "")
-                item += test
+        for item in lyrics_iter:
+            if item == "":
+                continue
+            else:
+                if item[-1] == "(":
+                    item = item + next(lyrics_iter, "") + next(lyrics_iter, "")
+                if item[0] == "[":
+                    item = "\n" + item
+                if item[-1] == "{":
+                    item = item[:-1]
+                    test = next(lyrics_iter, "")
+                    item += test
 
-        # item = item + "\n"
-        lyrics_string += item
+            # item = item + "\n"
+            lyrics_string += item
 
     # print(lyrics_string)
     print("Lyrics downloaded.")
